@@ -1,0 +1,812 @@
+<title>Localizador de Peças</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<style>
+/* ── TOKENS ─────────────────────────────────────── */
+:root {
+  --bg:          #EDEAE5;
+  --surface:     #F9F8F5;
+  --surface-2:   #FFFFFF;
+  --text:        #1B1816;
+  --text-2:      #6B6460;
+  --text-3:      #ABA5A0;
+  --accent:      #D44E16;
+  --accent-soft: #FDF1EB;
+  --accent-mid:  #F5BFA5;
+  --border:      #DEDAD4;
+  --bstrong:     #C5C0B8;
+  --ok:          #1A6B3A;
+  --ok-bg:       #EBF7F0;
+  --ok-bd:       #9DD4B5;
+  --warn:        #975200;
+  --err:         #BB1624;
+  --radius:      8px;
+  --radius-lg:   14px;
+  --shadow:      0 1px 3px rgba(0,0,0,.07), 0 4px 14px rgba(0,0,0,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:          #141210;
+    --surface:     #1D1A17;
+    --surface-2:   #252018;
+    --text:        #F3EFE9;
+    --text-2:      #9C9490;
+    --text-3:      #5A5450;
+    --accent:      #E86330;
+    --accent-soft: #2C1408;
+    --accent-mid:  #5E2C10;
+    --border:      #2E2820;
+    --bstrong:     #3E3830;
+    --ok:          #5ACD8A;
+    --ok-bg:       #0A2018;
+    --ok-bd:       #1A5030;
+    --warn:        #EDAA30;
+    --err:         #FF7070;
+    --shadow:      0 1px 3px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"] {
+  --bg:          #141210;
+  --surface:     #1D1A17;
+  --surface-2:   #252018;
+  --text:        #F3EFE9;
+  --text-2:      #9C9490;
+  --text-3:      #5A5450;
+  --accent:      #E86330;
+  --accent-soft: #2C1408;
+  --accent-mid:  #5E2C10;
+  --border:      #2E2820;
+  --bstrong:     #3E3830;
+  --ok:          #5ACD8A;
+  --ok-bg:       #0A2018;
+  --ok-bd:       #1A5030;
+  --warn:        #EDAA30;
+  --err:         #FF7070;
+  --shadow:      0 1px 3px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+}
+
+/* ── RESET ──────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Barlow', system-ui, sans-serif;
+  font-size: 15px; line-height: 1.5;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── HEADER ─────────────────────────────────────── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  height: 54px;
+  display: flex; align-items: center;
+  padding: 0 28px; gap: 14px;
+  position: sticky; top: 0; z-index: 100;
+}
+.logo-box {
+  width: 30px; height: 30px;
+  background: var(--accent); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.logo-box svg { fill: #fff; }
+header h1 {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 19px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.hd-sep { flex: 1; }
+.hd-pill {
+  font-size: 12.5px; font-weight: 500;
+  color: var(--text-3); padding: 4px 12px;
+  border: 1px solid var(--border); border-radius: 20px;
+  background: var(--bg);
+}
+
+/* ── LAYOUT ─────────────────────────────────────── */
+.wrap {
+  max-width: 1120px; margin: 0 auto;
+  padding: 28px 24px;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 22px; align-items: start;
+}
+@media (max-width: 740px) {
+  .wrap { grid-template-columns: 1fr; padding: 16px; }
+}
+
+/* ── LEFT PANEL ─────────────────────────────────── */
+.left-col { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 70px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 18px;
+}
+.card-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-3); margin-bottom: 12px;
+}
+
+/* ── DROP ZONE ──────────────────────────────────── */
+.drop-zone {
+  position: relative;
+  border: 2px dashed var(--bstrong);
+  border-radius: var(--radius);
+  padding: 28px 14px;
+  text-align: center; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.drop-zone input[type="file"] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.drop-zone:hover, .drop-zone.over {
+  border-color: var(--accent); background: var(--accent-soft);
+}
+.drop-zone.processing {
+  border-color: var(--accent); background: var(--accent-soft);
+}
+.dz-icon { color: var(--text-3); margin-bottom: 8px; }
+.dz-main { font-size: 14px; font-weight: 600; color: var(--text-2); }
+.dz-hint { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+
+/* ── PICKER (múltiplos códigos no PDF) ──────────── */
+.picker {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.picker-head {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-3); padding: 8px 12px;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+}
+.picker-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background .12s;
+}
+.picker-item:last-child { border-bottom: none; }
+.picker-item:hover { background: var(--accent-soft); }
+.pi-code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px; font-weight: 500; color: var(--accent); min-width: 60px;
+}
+.pi-name { flex: 1; font-size: 13px; color: var(--text); }
+.pi-chave {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; color: var(--text-3);
+  background: var(--bg); padding: 2px 6px; border-radius: 4px;
+}
+
+/* ── MANUAL ─────────────────────────────────────── */
+.divider-or {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .07em;
+  color: var(--text-3); margin: 12px 0;
+}
+.divider-or::before, .divider-or::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.row { display: flex; gap: 7px; }
+.inp {
+  flex: 1; font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px; letter-spacing: .02em;
+  padding: 8px 11px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface-2); color: var(--text);
+  outline: none; transition: border-color .15s;
+}
+.inp:focus { border-color: var(--accent); }
+.inp::placeholder { font-family: 'Barlow', sans-serif; color: var(--text-3); letter-spacing: 0; }
+
+/* ── BUTTONS ────────────────────────────────────── */
+.btn {
+  font-family: 'Barlow', sans-serif;
+  font-size: 13.5px; font-weight: 600;
+  padding: 8px 16px; border: none; border-radius: var(--radius);
+  cursor: pointer; transition: filter .15s, opacity .15s;
+  white-space: nowrap;
+}
+.btn-accent { background: var(--accent); color: #fff; }
+.btn-accent:hover { filter: brightness(1.1); }
+.btn-ghost {
+  background: transparent; color: var(--text-2);
+  border: 1px solid var(--border); font-size: 13px;
+}
+.btn-ghost:hover { background: var(--bg); border-color: var(--bstrong); }
+.btn-ghost.danger:hover { color: var(--err); border-color: var(--err); background: transparent; }
+.actions-row { display: flex; gap: 8px; }
+.actions-row .btn { flex: 1; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── RIGHT PANEL: LISTA ─────────────────────────── */
+.list-panel { display: flex; flex-direction: column; gap: 0; }
+
+.list-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px;
+}
+.list-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--text-2); flex: 1;
+}
+.list-count {
+  background: var(--accent); color: #fff;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: .04em;
+  padding: 2px 10px; border-radius: 20px;
+}
+
+.item-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* Each list item row */
+.list-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  display: grid;
+  grid-template-columns: 32px 1fr auto auto auto;
+  gap: 0;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: border-color .15s, border-left-color .15s, border-left-width .15s;
+}
+.list-item:hover { border-color: var(--bstrong); }
+
+.li-num {
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; font-weight: 700; color: var(--text-3);
+  padding: 0 4px;
+}
+
+.li-body {
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.li-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.li-code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px; font-weight: 500; color: var(--accent);
+}
+.li-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.li-meta { font-size: 12px; color: var(--text-3); }
+
+.li-loc {
+  display: flex; align-items: center; gap: 4px; flex-wrap: nowrap;
+}
+.loc-box {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  flex-shrink: 0;
+}
+.lb-label {
+  font-size: 8.5px; font-weight: 600; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-3); white-space: nowrap;
+}
+.lb-val {
+  background: var(--accent-soft);
+  border: 1.5px solid var(--accent-mid);
+  color: var(--accent);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px; font-weight: 500;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px;
+}
+.loc-sep { color: var(--text-3); font-size: 12px; margin-top: 12px; flex-shrink: 0; }
+
+.li-chave {
+  padding: 14px 12px 14px 0;
+  display: flex; flex-direction: column; align-items: flex-end;
+  justify-content: center; gap: 6px;
+}
+.chave-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px; font-weight: 500; color: var(--text-2);
+  background: var(--bg); border: 1px solid var(--border);
+  padding: 4px 10px; border-radius: 5px; white-space: nowrap;
+}
+.qty-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; font-weight: 500;
+  padding: 3px 9px; border-radius: 5px; white-space: nowrap;
+}
+.qty-tag.ok   { color: var(--ok);  background: var(--ok-bg); }
+.qty-tag.warn { color: var(--warn); background: #FFF7EB; }
+.qty-tag.zero { color: var(--err); background: #FFF0F1; }
+
+.li-remove {
+  border-left: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 14px;
+  cursor: pointer; color: var(--text-3);
+  transition: color .15s, background .15s;
+  background: transparent; border-top: none; border-bottom: none; border-right: none;
+  font-size: 18px;
+}
+.li-remove:hover { color: var(--err); background: #FFF0F1; }
+
+/* ── EMPTY STATE ────────────────────────────────── */
+.empty {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 72px 32px; text-align: center;
+}
+.empty svg { color: var(--text-3); opacity: .4; margin-bottom: 18px; }
+.empty p { font-size: 16px; color: var(--text-2); }
+.empty small { display: block; font-size: 13px; color: var(--text-3); margin-top: 6px; }
+
+/* ── NOT FOUND TOAST ────────────────────────────── */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: #1B1816; color: #fff;
+  padding: 12px 20px; border-radius: 10px;
+  font-size: 14px; font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,.25);
+  z-index: 999; pointer-events: none;
+  animation: toastIn .2s ease;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── LOADING ────────────────────────────────────── */
+.spinner-inline {
+  width: 16px; height: 16px;
+  border: 2px solid var(--accent-mid);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: inline-block; vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner-inline { animation: none; } }
+
+/* ── CHECKLIST TOGGLE ───────────────────────────── */
+.li-found {
+  border-left: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 14px;
+}
+.found-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: none; border: none; cursor: pointer; padding: 6px 4px;
+}
+.found-icon {
+  width: 28px; height: 28px;
+  border: 2px solid var(--bstrong);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, border-color .15s;
+  font-size: 17px; line-height: 1;
+}
+.found-label {
+  font-size: 9px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-3);
+  white-space: nowrap;
+  transition: color .15s;
+}
+.found-btn:hover .found-icon {
+  border-color: var(--ok); background: var(--ok-bg);
+}
+/* Found state */
+.list-item.is-found {
+  border-left: 3px solid var(--ok);
+}
+.list-item.is-found .found-icon {
+  background: var(--ok-bg); border-color: var(--ok); color: var(--ok);
+}
+.list-item.is-found .found-label {
+  color: var(--ok);
+}
+.list-item.is-found .li-body { opacity: .75; }
+
+/* ── PRINT ──────────────────────────────────────── */
+@media print {
+  header, .left-col { display: none !important; }
+  body { background: #fff !important; }
+  .wrap { grid-template-columns: 1fr !important; padding: 0 !important; max-width: 100% !important; }
+  .list-item { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
+  .li-remove { display: none !important; }
+  .list-header .btn { display: none !important; }
+  .lb-val { border-color: #ccc !important; }
+  .found-btn { pointer-events: none; }
+  .found-icon { border-color: #999 !important; background: #fff !important; }
+  .list-item.is-found .found-icon { background: #e6f7ee !important; border-color: #2a7a4b !important; }
+}
+</style>
+
+<!-- HEADER -->
+<header>
+  <div class="logo-box">
+    <svg width="16" height="16" viewBox="0 0 16 16">
+      <path d="M1 1h6v6H1V1zm8 0h6v6H9V1zM1 9h6v6H1V9zm8 0h6v6H9V9z"/>
+    </svg>
+  </div>
+  <h1>Localizador de Peças</h1>
+  <div class="hd-sep"></div>
+  <div class="hd-pill" id="hdCount">carregando…</div>
+</header>
+
+<div class="wrap">
+
+  <!-- LEFT: CONTROLES -->
+  <div class="left-col">
+
+    <!-- PDF Drop -->
+    <div class="card">
+      <div class="card-label">Anexar Documento PDF</div>
+      <div class="drop-zone" id="pdfZone">
+        <input type="file" id="pdfInput" accept=".pdf" title="Selecionar PDF">
+        <div class="dz-icon">
+          <svg width="38" height="38" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 38 38">
+            <rect x="5" y="3" width="19" height="30" rx="2"/>
+            <path d="M24 3l9 9v22H13"/>
+            <path d="M24 3v9h9"/>
+            <path d="M10 21h11M10 25h7"/>
+          </svg>
+        </div>
+        <div class="dz-main" id="pdfMain">Arraste o PDF aqui</div>
+        <div class="dz-hint">Cada PDF adiciona um item à lista</div>
+      </div>
+      <!-- Picker de múltiplos códigos -->
+      <div id="pickerBox" style="display:none;"></div>
+    </div>
+
+    <!-- Manual -->
+    <div class="card">
+      <div class="card-label">Adicionar por Código</div>
+      <div class="divider-or">BUSCA MANUAL</div>
+      <div class="row">
+        <input class="inp" type="text" id="manualCode"
+          placeholder="Ex: 00125" maxlength="50"
+          autocomplete="off" spellcheck="false">
+        <button class="btn btn-accent" onclick="searchManual()">+ Add</button>
+      </div>
+    </div>
+
+    <!-- Ações -->
+    <div class="actions-row">
+      <button class="btn btn-ghost danger" onclick="resetPage()">↺ Limpar</button>
+      <button class="btn btn-ghost" onclick="doPrint()">⎙ Imprimir</button>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: LISTA DE ITENS -->
+  <div id="rightPanel">
+    <div class="empty" id="emptyState">
+      <svg width="54" height="54" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 54 54">
+        <rect x="10" y="8" width="34" height="38" rx="3"/>
+        <path d="M18 18h18M18 24h18M18 30h10"/>
+        <circle cx="40" cy="40" r="10"/>
+        <path d="M36 40h8M40 36v8"/>
+      </svg>
+      <p>Lista vazia</p>
+      <small>Arraste um PDF ou adicione um código para começar.</small>
+    </div>
+    <div id="listWrap" style="display:none;">
+      <div class="list-header">
+        <div class="list-title">Itens localizados</div>
+        <div class="list-count" id="listCount">0</div>
+      </div>
+      <div class="item-list" id="itemList"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── PDF.js ────────────────────────────────────────
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ── ESTOQUE EMBUTIDO ──────────────────────────────
+const ESTOQUE_RAW = [{"codigo":"00125","produto":"Rolamento 6205","marca":"SKF","categoria":"Rolamentos","qtd":8,"estoqueMin":2,"obs":"Exemplo","chave":"A-C-1-F","secao":"A","prateleira":"C","posicao":"1","lado":"Frente"},{"codigo":"00126","produto":"Rolamento 6206","marca":"SKF","categoria":"Rolamentos","qtd":6,"estoqueMin":2,"obs":"Exemplo","chave":"A-C-2-F","secao":"A","prateleira":"C","posicao":"2","lado":"Frente"},{"codigo":"00127","produto":"Retentor 35x52","marca":"Sabó","categoria":"Retentores","qtd":12,"estoqueMin":4,"obs":"Exemplo","chave":"A-C-4-F","secao":"A","prateleira":"C","posicao":"4","lado":"Frente"},{"codigo":"00128","produto":"Correia A-42","marca":"Gates","categoria":"Correias","qtd":5,"estoqueMin":2,"obs":"Exemplo","chave":"A-C-1-T","secao":"A","prateleira":"C","posicao":"1","lado":"Trás"},{"codigo":"00130","produto":"Exemplo posição 12","marca":"Exemplo","categoria":"Diversos","qtd":1,"estoqueMin":0,"obs":"Teste","chave":"A-A-12-F","secao":"A","prateleira":"A","posicao":"12","lado":"Frente"},{"codigo":"1010","produto":"tiago","marca":"teste","categoria":"teste","qtd":5,"estoqueMin":0,"obs":"teste","chave":"C-E-3-T","secao":"C","prateleira":"E","posicao":"3","lado":"Trás"}];
+
+const estoque  = {};
+const allCodes = [];
+ESTOQUE_RAW.forEach(it => {
+  if (!it.codigo || !it.produto) return;
+  estoque[it.codigo] = it;
+  allCodes.push(it.codigo);
+});
+document.getElementById('hdCount').textContent = allCodes.length + ' peças cadastradas';
+
+// ── LISTA DE ITENS ────────────────────────────────
+let itemList = [];  // array de objetos item
+
+function addToList(item) {
+  itemList.push({ ...item, found: false });
+  renderList();
+  hidePicker();
+  resetZone();
+}
+
+function toggleFound(idx) {
+  itemList[idx].found = !itemList[idx].found;
+  renderList();
+}
+
+function removeFromList(idx) {
+  itemList.splice(idx, 1);
+  renderList();
+}
+
+function renderList() {
+  const empty    = document.getElementById('emptyState');
+  const listWrap = document.getElementById('listWrap');
+  const listEl   = document.getElementById('itemList');
+  const countEl  = document.getElementById('listCount');
+
+  if (itemList.length === 0) {
+    empty.style.display    = '';
+    listWrap.style.display = 'none';
+    return;
+  }
+
+  empty.style.display    = 'none';
+  listWrap.style.display = '';
+  countEl.textContent    = itemList.length;
+
+  listEl.innerHTML = itemList.map((item, idx) => {
+    const qtd  = item.qtd !== null ? Number(item.qtd) : null;
+    const min  = Number(item.estoqueMin) || 0;
+    let qCls   = 'ok';
+    let qLabel = '—';
+    if (qtd === null || isNaN(qtd)) { qCls = 'ok'; qLabel = '—'; }
+    else if (qtd === 0)             { qCls = 'zero'; qLabel = 'Esgotado'; }
+    else if (qtd <= min)            { qCls = 'warn'; qLabel = qtd + ' un. · Mín.'; }
+    else                            { qCls = 'ok';   qLabel = qtd + ' un. · Estoque'; }
+
+    // Location boxes
+    const steps = [];
+    if (item.secao)      steps.push({ lbl: 'Seção',  val: item.secao });
+    if (item.prateleira) steps.push({ lbl: 'Prat.',  val: item.prateleira });
+    if (item.posicao !== '') steps.push({ lbl: 'Pos.', val: item.posicao });
+    if (item.lado) {
+      let l = item.lado;
+      if (l === 'Frente') l = 'F';
+      else if (l === 'Trás' || l === 'Tras') l = 'T';
+      steps.push({ lbl: 'Lado', val: l });
+    }
+
+    const locHTML = steps.map((s, i) =>
+      '<div class="loc-box">' +
+        '<div class="lb-label">' + s.lbl + '</div>' +
+        '<div class="lb-val">'   + s.val + '</div>' +
+      '</div>' +
+      (i < steps.length - 1 ? '<div class="loc-sep">›</div>' : '')
+    ).join('');
+
+    const chave = item.chave || steps.map(s => s.val).join('-');
+    const meta  = [item.marca, item.categoria].filter(Boolean).join(' · ');
+
+    const isFound  = !!item.found;
+    const foundCls = isFound ? ' is-found' : '';
+    const foundIcon = isFound
+      ? '<span style="color:var(--ok)">✓</span>'
+      : '';
+
+    return (
+      '<div class="list-item' + foundCls + '">' +
+        '<div class="li-num">' + (idx + 1) + '</div>' +
+        '<div class="li-body">' +
+          '<div class="li-top">' +
+            '<span class="li-code">' + h(item.codigo) + '</span>' +
+            '<span class="li-name">' + h(item.produto) + '</span>' +
+          '</div>' +
+          (meta ? '<div class="li-meta">' + h(meta) + '</div>' : '') +
+          (steps.length ? '<div class="li-loc">' + locHTML + '</div>' : '') +
+        '</div>' +
+        '<div class="li-chave">' +
+          (chave ? '<div class="chave-tag">' + h(chave) + '</div>' : '') +
+          (qtd !== null && !isNaN(qtd) ? '<div class="qty-tag ' + qCls + '">' + qLabel + '</div>' : '') +
+        '</div>' +
+        '<div class="li-found">' +
+          '<button class="found-btn" onclick="toggleFound(' + idx + ')" title="' + (isFound ? 'Marcar como não encontrado' : 'Marcar como encontrado') + '">' +
+            '<div class="found-icon">' + foundIcon + '</div>' +
+            '<div class="found-label">' + (isFound ? 'Encontrado' : 'Verificar') + '</div>' +
+          '</button>' +
+        '</div>' +
+        '<button class="li-remove" onclick="removeFromList(' + idx + ')" title="Remover">×</button>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+// ── PDF ───────────────────────────────────────────
+document.getElementById('pdfInput').addEventListener('change', e => {
+  const f = e.target.files[0]; if (f) processPDF(f);
+});
+const pdfZone = document.getElementById('pdfZone');
+pdfZone.addEventListener('dragover',  e => { e.preventDefault(); pdfZone.classList.add('over'); });
+pdfZone.addEventListener('dragleave', ()  => pdfZone.classList.remove('over'));
+pdfZone.addEventListener('drop', e => {
+  e.preventDefault(); pdfZone.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f) { document.getElementById('pdfInput').files = e.dataTransfer.files; processPDF(f); }
+});
+
+async function processPDF(file) {
+  hidePicker();
+  document.getElementById('pdfMain').innerHTML =
+    '<span class="spinner-inline"></span>Lendo ' + h(file.name) + '…';
+  pdfZone.classList.add('processing');
+
+  try {
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+
+    let text = '';
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const pg = await pdf.getPage(p);
+      const tc  = await pg.getTextContent();
+      text += tc.items.map(i => i.str).join(' ') + '\n';
+    }
+
+    pdfZone.classList.remove('processing');
+
+    const found = findCodes(text);
+    if (found.length === 0) {
+      showToast('Nenhum código encontrado no PDF — tente a busca manual');
+      resetZone();
+    } else if (found.length === 1) {
+      addToList(estoque[found[0]]);
+    } else {
+      // Múltiplos: mostrar picker
+      showPicker(found);
+      document.getElementById('pdfMain').textContent = found.length + ' códigos encontrados — selecione:';
+    }
+
+  } catch(err) {
+    pdfZone.classList.remove('processing');
+    showToast('Erro ao ler o PDF');
+    resetZone();
+    console.error(err);
+  }
+
+  document.getElementById('pdfInput').value = '';
+}
+
+function findCodes(text) {
+  // Gera variantes do texto para aumentar chance de match
+  const variants = [
+    text,
+    text.replace(/\s+/g, ' '),   // espaços normalizados
+    text.replace(/\s+/g, ''),    // sem espaços (código fragmentado no PDF)
+  ];
+
+  const results = [];
+  for (const code of allCodes) {
+    if (results.includes(code)) continue;
+    const esc     = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Versão sem zeros à esquerda (ex: "125" para "00125")
+    const stripped = code.replace(/^0+/, '') || code;
+    const escS     = stripped.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    let found = false;
+    for (const t of variants) {
+      if (found) break;
+      // Tentativa 1: word-boundary nativa (\b funciona bem para numérico)
+      if (new RegExp('\\b' + esc + '\\b', 'i').test(t))           { found = true; break; }
+      // Tentativa 2: lookbehind/lookahead (original)
+      if (new RegExp('(?<![\\w])' + esc + '(?![\\w])', 'i').test(t)) { found = true; break; }
+      // Tentativa 3: código sem zeros à esquerda
+      if (stripped !== code) {
+        if (new RegExp('\\b' + escS + '\\b', 'i').test(t))             { found = true; break; }
+        if (new RegExp('(?<![\\w])' + escS + '(?![\\w])', 'i').test(t)) { found = true; break; }
+      }
+      // Tentativa 4: inclusão simples (último recurso)
+      if (t.includes(code) || (stripped !== code && t.includes(stripped))) { found = true; }
+    }
+
+    if (found) results.push(code);
+  }
+  return results;
+}
+
+// ── PICKER ────────────────────────────────────────
+function showPicker(codes) {
+  const box = document.getElementById('pickerBox');
+  const items = codes.map(c => {
+    const it = estoque[c];
+    return '<div class="picker-item" onclick="addToList(estoque[\'' + a(c) + '\'])">' +
+      '<div class="pi-code">' + h(it.codigo) + '</div>' +
+      '<div class="pi-name">' + h(it.produto) + '</div>' +
+      (it.chave ? '<div class="pi-chave">' + h(it.chave) + '</div>' : '') +
+    '</div>';
+  }).join('');
+  box.innerHTML = '<div class="picker"><div class="picker-head">Selecione a peça:</div>' + items + '</div>';
+  box.style.display = '';
+}
+function hidePicker() {
+  const box = document.getElementById('pickerBox');
+  box.style.display = 'none';
+  box.innerHTML = '';
+}
+
+// ── BUSCA MANUAL ─────────────────────────────────
+document.getElementById('manualCode').addEventListener('keydown', e => {
+  if (e.key === 'Enter') searchManual();
+});
+function searchManual() {
+  const raw = document.getElementById('manualCode').value.trim();
+  if (!raw) return;
+
+  let item = estoque[raw] || estoque[raw.padStart(5, '0')];
+  if (!item) {
+    const lc = raw.toLowerCase();
+    for (const c of allCodes) {
+      if (c.toLowerCase() === lc) { item = estoque[c]; break; }
+    }
+  }
+
+  if (item) {
+    addToList(item);
+    document.getElementById('manualCode').value = '';
+  } else {
+    showToast('Código "' + raw + '" não encontrado no estoque');
+  }
+}
+
+// ── IMPRIMIR ──────────────────────────────────────
+function doPrint() {
+  try {
+    // Tenta imprimir o iframe diretamente
+    window.print();
+  } catch(e) {}
+  // Fallback: abre nova janela com o conteúdo e imprime
+  try { window.top.print(); } catch(e) {}
+}
+
+// ── LIMPAR ────────────────────────────────────────
+function resetPage() {
+  itemList = [];
+  renderList();
+  resetZone();
+  hidePicker();
+  document.getElementById('manualCode').value = '';
+}
+
+function resetZone() {
+  pdfZone.classList.remove('processing', 'over', 'ready');
+  document.getElementById('pdfMain').textContent = 'Arraste o PDF aqui';
+}
+
+// ── TOAST ─────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  if (toastTimer) clearTimeout(toastTimer);
+
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  toastTimer = setTimeout(() => el.remove(), 3000);
+}
+
+// ── UTILS ─────────────────────────────────────────
+function h(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function a(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+</script>
